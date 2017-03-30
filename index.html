@@ -1,0 +1,287 @@
+!DOCTYPE html>
+<html>
+<head>
+  <title>Oma Peli</title>
+  <meta charset="utf-8"/>
+  <script src="http://code.jquery.com/jquery-1.11.1.min.js"></script>
+  <style>
+    canvas {
+        border:1px solid #d3d3d3;
+        background-color: HotPink;
+      }
+    .gameButton{
+      width:150px;
+      height: 30px;
+    }
+    .ohjeteksti{
+      width:500px;
+    }
+    .painikkeet{
+      width:500px;
+    }
+  </style>
+
+  <script>
+
+  $(document).ready( function() {
+////////////////////// MY buttons
+  //liiku vasemmalle
+  $("#left").click( function () {
+    myGamePiece.speedX = myGamePiece.speedX-speedChange;
+  });
+  //liiku oikealle
+  $("#right").click( function () {
+    myGamePiece.speedX = myGamePiece.speedX +speedChange;
+  });
+
+  $("#new").click( function () {
+    endGame();
+    startGame(1);
+  });
+
+    // Simulates "game over" when a score would be sent
+    $("#submit_score").click( function () {
+      var msg = {
+        "messageType": "SCORE",
+        "score": myScore.score
+      };
+      window.parent.postMessage(msg, "*");
+    });
+
+    // Sends this game's state to the service.
+    // The format of the game state is decided
+    // by the game
+    $("#save").click( function () {
+      var msg = {
+        "messageType": "SAVE",
+        "gameState": {
+          "playerItems": ["none"], //not used
+          "score": myScore.score
+        }
+      };
+      window.parent.postMessage(msg, "*");
+    });
+
+    // Sends a request to the service for a
+    // state to be sent, if there is one.
+    $("#load").click( function () {
+      var msg = {
+        "messageType": "LOAD_REQUEST",
+      };
+      window.parent.postMessage(msg, "*");
+    });
+
+    // Listen incoming messages, if the messageType
+    // is LOAD then the game state will be loaded.
+    // Note that no checking is done, whether the
+    // gameState in the incoming message contains
+    // correct information.
+    //
+    // Also handles any errors that the service
+    // wants to send (displays them as an alert).
+    window.addEventListener("message", function(evt) {
+      if(evt.data.messageType === "LOAD") {
+        playerItems = evt.data.gameState.playerItems;
+        points = evt.data.gameState.score;
+        endGame();
+        startGame(points);
+      } else if (evt.data.messageType === "ERROR") {
+        alert(evt.data.info);
+      }
+    });
+
+
+    // Request the service to set the resolution of the
+    // iframe correspondingly
+    var message =  {
+      messageType: "SETTING",
+      options: {
+      	"width": 520, //Integer
+        "height": 450 //Integer
+        }
+    };
+    window.parent.postMessage(message, "*");
+
+  });
+  </script>
+</head>
+<body onload="startGame(1)">
+
+<script>
+
+  var myGamePiece;
+  var myScore;
+  var pingPongObj;
+  var speedChange = 0.3;
+  var frameCalc = 0;
+  var ctx;
+
+  window.addEventListener('keydown', function(event) {
+    switch (event.keyCode) {
+      case 37: // Left
+        myGamePiece.speedX = myGamePiece.speedX-speedChange;
+      break;
+
+      case 39: // Right
+        myGamePiece.speedX = myGamePiece.speedX+speedChange;
+      break;
+    }
+  }, false);
+  //function for gamestart creates canvas and
+    function startGame(score){
+
+      GameArea.start();
+
+      myGamePiece = new object(200,250,100,30,"player");
+      myGamePiece.update();
+      myScore = new object(200,250,100,30,"text");
+      myScore.update();
+      pingPongObj = new object(50,50,20,20,"pingPong");
+      pingPongObj.speedX = 1;
+      pingPongObj.speedY = -1;
+      myScore.score = score;
+      pingPongObj.update();
+    }
+    function endGame(){
+      clearInterval(GameArea.interval);
+    }
+
+    function updateGame(){
+
+      frameCalc = frameCalc+1;
+      if(frameCalc%10 == 0){
+        myScore.score = myScore.score+1;
+      }
+
+      if(myScore.score%100 == 0 ){
+        speedChange = speedChange+0.02;
+        if(myGamePiece.width > 35){
+          myGamePiece.width = myGamePiece.width-2;
+        }
+        if(pingPongObj.speedY >0){
+          pingPongObj.speedY = pingPongObj.speedY+0.05;
+        }
+        else{
+          pingPongObj.speedY = pingPongObj.speedY-0.05;
+          //pingPongObj.speedY = pingPongObj.speedY-0.1;
+        }
+        if(pingPongObj.speedX >0){
+          pingPongObj.speedX = pingPongObj.speedX+0.05;
+        }
+        else{
+          pingPongObj.speedX = pingPongObj.speedX-0.05;
+          //pingPongObj.speedY = pingPongObj.speedY-0.1;
+        }
+      }
+
+
+      myScore.text = "Pisteet: "+ myScore.score;
+
+      GameArea.clear();
+      myGamePiece.update();
+      myScore.update();
+      pingPongObj.update();
+    }
+
+  var GameArea = {
+    canvas : document.createElement("canvas"),
+    start : function(){
+      //canvas settings
+      this.canvas.width = 500;
+      this.canvas.height = 300;
+      this.context = this.canvas.getContext("2d");
+      //place for canvas
+      document.body.insertBefore(this.canvas, document.body.childNodes[0]);
+      this.interval = setInterval(updateGame, 20);
+      ctx = this.context;
+    },
+
+      clear : function() {
+        this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    }
+  }
+
+  function object(x,y,width,height,type){
+    this.type = type;
+    this.x = x;
+    this.y = y;
+    this.speedX = 0;
+    this.speedY = 0;
+    this.width = width;
+    this.height = height;
+    this.text = "pisteet: 0";
+    this.score = 1;
+
+    this.update = function(){
+
+      if(this.type == "text"){
+        ctx.font = "30px Consolas";
+        ctx.fillStyle = "#000000";
+        ctx.fillText(this.text, 20, 50);
+      }
+      else if(this.type == "player"){
+
+        ctx.fillStyle = "#FF0000";
+        if(this.x+this.speedX >1 &&
+        this.x+this.speedX <500-this.width){
+        this.x = this.x+this.speedX;
+      }
+      ctx.fillRect(this.x,this.y,this.width,this.height);
+    }
+    else if (this.type == "pingPong"){
+      calcPingPong();
+      ctx.fillStyle = "#000000";
+
+      ctx.fillRect(this.x,this.y,this.width,this.height);
+
+    }
+    }
+
+  }
+
+  function calcPingPong(){
+    if(pingPongObj.y+pingPongObj.speedY < 1){
+      pingPongObj.speedY = pingPongObj.speedY*(-1);
+    }
+    if(pingPongObj.x+pingPongObj.speedX < 1){
+      pingPongObj.speedX = pingPongObj.speedX*(-1);
+    }
+
+    if(pingPongObj.x+pingPongObj.speedX > GameArea.canvas.width-pingPongObj.width){
+      pingPongObj.speedX = pingPongObj.speedX*(-1);
+    }
+    //ping pong hit to player
+    if(pingPongObj.y+pingPongObj.speedY > myGamePiece.y -pingPongObj.height &&
+       myGamePiece.x-pingPongObj.width < pingPongObj.x &&
+       pingPongObj.x < myGamePiece.x+myGamePiece.width){
+      pingPongObj.speedY = pingPongObj.speedY*(-1);
+    }
+    //player missed ping pong
+    if(pingPongObj.y+pingPongObj.height > myGamePiece.y){
+      endGame();
+    }
+
+    pingPongObj.x = pingPongObj.x+pingPongObj.speedX;
+    pingPongObj.y = pingPongObj.y+pingPongObj.speedY;
+  }
+
+  </script>
+  <br>
+  <div class="painikkeet">
+  <button class= "gameButton" id="left">left</button>
+  <button class = "gameButton" id="right">right</button>
+  <button id="submit_score">Submit score</button>
+  <button id="save">Save</button>
+  <button id="load">Load</button>
+  <button id="new">New Game</button>
+
+  </div>
+  <div class="ohjeteksti" >
+  <p>Pelaa peliä left/right painikkeilla tai nuolinäppäimillä.
+  Pyri pitämään musta laatikko ilmassa mahdollisimman kauan.
+  Peli vaikeutuu aina sadan pisteen välein.</p>
+  </div>
+
+
+</body>
+</html>
