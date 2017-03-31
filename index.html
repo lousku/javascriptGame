@@ -20,6 +20,85 @@ canvas {
 }
 </style>
 
+<script>
+
+$(document).ready( function () {
+
+    $("#left").click( function () {
+      myGamePiece.speedX = myGamePiece.speedX - speedChange;
+    });
+    //liiku oikealle
+    $("#right").click( function () {
+        myGamePiece.speedX = myGamePiece.speedX + speedChange;
+    });
+
+    $("#new").click( function () {
+        endGame();
+        startGame(1);
+    });
+
+    // Simulates "game over" when a score would be sent
+    $("#submit_score").click( function () {
+        var msg = {
+            "messageType": "SCORE",
+            "score": myScore.score
+        };
+        window.parent.postMessage(msg, "*");
+    });
+
+    // Sends this game's state to the service.
+    $("#save").click( function () {
+        var msg = {
+            "messageType": "SAVE",
+            "gameState": {
+                "playerItems": ["none"], //not used
+                "score": myScore.score
+            }
+        };
+        window.parent.postMessage(msg, "*");
+    });
+
+    // Sends a request to the service for a
+    // state to be sent, if there is one.
+    $("#load").click( function () {
+        var msg = {
+            "messageType": "LOAD_REQUEST"
+        };
+        window.parent.postMessage(msg, "*");
+    });
+
+    // Listen incoming messages, if the messageType
+    // is LOAD then the game state will be loaded.
+
+    // Also handles any errors that the service
+    // wants to send (displays them as an alert).
+    window.addEventListener("message", function (evt) {
+        if (evt.data.messageType === "LOAD") {
+            playerItems = evt.data.gameState.playerItems;
+            points = evt.data.gameState.score;
+            endGame();
+            startGame(points);
+        }
+        else if (evt.data.messageType === "ERROR") {
+            alert(evt.data.info);
+        }
+    });
+
+
+    // Request the service to set the resolution of the
+    // iframe correspondingly
+    var message =  {
+        messageType: "SETTING",
+        options: {
+            "width": 520, //Integer
+            "height": 450 //Integer
+        }
+    };
+    window.parent.postMessage(message, "*");
+});
+
+</script>
+
 </head>
 
 <body onload="startGame(1)">
@@ -172,81 +251,6 @@ function calcPingPong(){
     pingPongObj.y = pingPongObj.y + pingPongObj.speedY;
 }
 
-
-$(document).ready( function () {
-
-    $("#left").click( function () {
-      myGamePiece.speedX = myGamePiece.speedX - speedChange;
-    });
-    //liiku oikealle
-    $("#right").click( function () {
-        myGamePiece.speedX = myGamePiece.speedX + speedChange;
-    });
-
-    $("#new").click( function () {
-        endGame();
-        startGame(1);
-    });
-
-    // Simulates "game over" when a score would be sent
-    $("#submit_score").click( function () {
-        var msg = {
-            "messageType": "SCORE",
-            "score": myScore.score
-        };
-        window.parent.postMessage(msg, "*");
-    });
-
-    // Sends this game's state to the service.
-    $("#save").click( function () {
-        var msg = {
-            "messageType": "SAVE",
-            "gameState": {
-                "playerItems": ["none"], //not used
-                "score": myScore.score
-            }
-        };
-        window.parent.postMessage(msg, "*");
-    });
-
-    // Sends a request to the service for a
-    // state to be sent, if there is one.
-    $("#load").click( function () {
-        var msg = {
-            "messageType": "LOAD_REQUEST"
-        };
-        window.parent.postMessage(msg, "*");
-    });
-
-    // Listen incoming messages, if the messageType
-    // is LOAD then the game state will be loaded.
-
-    // Also handles any errors that the service
-    // wants to send (displays them as an alert).
-    window.addEventListener("message", function (evt) {
-        if (evt.data.messageType === "LOAD") {
-            playerItems = evt.data.gameState.playerItems;
-            points = evt.data.gameState.score;
-            endGame();
-            startGame(points);
-        }
-        else if (evt.data.messageType === "ERROR") {
-            alert(evt.data.info);
-        }
-    });
-
-
-    // Request the service to set the resolution of the
-    // iframe correspondingly
-    var message =  {
-        messageType: "SETTING",
-        options: {
-            "width": 520, //Integer
-            "height": 450 //Integer
-        }
-    };
-    window.parent.postMessage(message, "*");
-});
 
 </script>
 <br>
